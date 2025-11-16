@@ -13,9 +13,24 @@
         body {
             font-family: 'Inter', sans-serif;
         }
+        /* Ocultar flechas en input de tipo number (si se usaran) */
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+            -webkit-appearance: none; 
+            margin: 0; 
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen flex items-center justify-center p-4 relative pt-16 sm:pt-4">
+
+    <!-- Header (Estado de Auth) -->
+    <div class="absolute top-4 left-4 z-10 flex items-center space-x-4" id="auth-status-container" style="display: none;">
+        <span id="user-email" class="text-gray-600 font-semibold"></span>
+        <button id="logout-btn" class="text-sm text-indigo-600 hover:underline" data-key="logoutBtn">Cerrar Sesión</button>
+    </div>
 
     <!-- Selector de Idioma -->
     <div class="absolute top-4 right-4 z-10">
@@ -25,8 +40,8 @@
         </select>
     </div>
 
-    <!-- Tarjeta principal del Quiz -->
-    <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-lg">
+    <!-- Tarjeta principal del Quiz (Oculta si no está logueado) -->
+    <div id="quiz-container" class="bg-white p-8 rounded-xl shadow-lg w-full max-w-lg" style="display: none;">
         
         <h1 class="text-3xl font-bold text-center text-indigo-600 mb-4" data-key="title">
             Quiz de Verbos Irregulares
@@ -36,9 +51,21 @@
             Escribe el <strong>Pasado Simple</strong> y el <strong>Pasado Participio</strong> del siguiente verbo.
         </p>
 
-        <!-- Puntuación -->
-        <div class="text-lg font-semibold text-gray-700 mb-6 text-center">
-            <span data-key="score">Puntuación:</span> <span id="score" class="text-indigo-600">0</span>
+        <!-- Botón de Clasificación -->
+        <div class="text-center mb-4">
+            <button id="leaderboard-toggle-btn" class="text-indigo-600 font-semibold hover:underline" data-key="leaderboardBtn">
+                Ver Clasificación
+            </button>
+        </div>
+
+        <!-- Puntuación y Racha -->
+        <div class="flex justify-around text-lg font-semibold text-gray-700 mb-6 text-center">
+            <div>
+                <span data-key="score">Puntuación:</span> <span id="score" class="text-indigo-600">0</span>
+            </div>
+            <div>
+                <span data-key="streak">Racha:</span> <span id="streak" class="text-indigo-600">0</span>
+            </div>
         </div>
 
         <!-- Área del verbo -->
@@ -87,7 +114,96 @@
         Creado por: Diego Vargas Rizo
     </footer>
 
-    <script>
+    <!-- Modal de Autenticación (Login / Registro) -->
+    <div id="auth-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 p-4">
+        <div class="bg-white p-8 rounded-lg shadow-lg w-full max-w-sm">
+            <h2 id="auth-title" class="text-2xl font-bold mb-4" data-key="loginTitle">Iniciar Sesión</h2>
+            
+            <div id="auth-username-container" class="mb-4" style="display: none;">
+                <label for="auth-username" class="block text-sm font-medium text-gray-700 mb-2" data-key="usernameLabel">Nombre de Usuario</label>
+                <input type="text" id="auth-username" class="w-full p-3 border border-gray-300 rounded-lg" data-key="usernamePlaceholder" placeholder="Elige un nombre público...">
+            </div>
+
+            <div class="space-y-4">
+                <input type="email" id="auth-email" class="w-full p-3 border border-gray-300 rounded-lg" data-key="emailPlaceholder" placeholder="correo@ejemplo.com" autocomplete="email">
+                <input type="password" id="auth-password" class="w-full p-3 border border-gray-300 rounded-lg" data-key="passwordPlaceholder" placeholder="Contraseña (mín. 6)" autocomplete="current-password">
+            </div>
+            
+            <p id="auth-error" class="text-red-500 text-sm mt-4"></p>
+
+            <button id="auth-submit-btn" class="w-full bg-indigo-600 text-white p-3 rounded-lg font-semibold hover:bg-indigo-700 mt-4" data-key="loginBtn">Iniciar Sesión</button>
+            
+            <p class="text-sm text-center mt-4">
+                <span id="auth-toggle-text" data-key="registerPrompt">¿No tienes cuenta?</span>
+                <button id="auth-toggle-btn" class="text-indigo-600 hover:underline" data-key="registerLink">Regístrate</button>
+            </p>
+        </div>
+    </div>
+
+
+    <!-- Modal de Clasificación -->
+    <div id="leaderboard-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 p-4 hidden">
+        <div class="bg-white p-8 rounded-lg shadow-lg w-full max-w-lg">
+            <h2 class="text-2xl font-bold mb-6 text-center" data-key="leaderboardTitle">Clasificación</h2>
+            <div class="max-h-80 overflow-y-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr class="border-b">
+                            <th class="p-2 text-left" data-key="leaderboardRank">#</th>
+                            <th class="p-2 text-left" data-key="leaderboardUser">Usuario</th>
+                            <th class="p-2 text-right" data-key="leaderboardScore">Puntuación Max.</th>
+                            <th class="p-2 text-right" data-key="leaderboardStreak">Racha Max.</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leaderboard-body">
+                        <!-- JS poblará esto desde Firestore -->
+                    </tbody>
+                </table>
+            </div>
+            <button id="leaderboard-close-btn" class="w-full bg-gray-600 text-white p-3 rounded-lg font-semibold mt-6 hover:bg-gray-700" data-key="closeBtn">Cerrar</button>
+        </div>
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script type="module">
+        // Importa los módulos de Firebase que necesitas
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-analytics.js";
+        import { 
+            getAuth, 
+            onAuthStateChanged,
+            createUserWithEmailAndPassword,
+            signInWithEmailAndPassword,
+            signOut
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { 
+            getFirestore, 
+            doc, 
+            getDoc, 
+            setDoc, 
+            collection, 
+            onSnapshot,
+            query
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- TU CONFIGURACIÓN DE FIREBASE (del Paso 3 de tu tarea) ---
+        // CORREGIDO con tu clave correcta
+        const firebaseConfig = {
+            apiKey: "AIzaSyC6fLL_s5CSd1IfOgbEb_-3rA8BwhR7TJg",
+            authDomain: "irregular-verbs-quiz-e0ddd.firebaseapp.com",
+            projectId: "irregular-verbs-quiz-e0ddd",
+            storageBucket: "irregular-verbs-quiz-e0ddd.firebaseapp.com",
+            messagingSenderId: "597333074638",
+            appId: "1:597333074638:web:40baf113ef9c9412eb269f",
+            measurementId: "G-BYZGTMQZL6"
+        };
+
+        // --- INICIALIZAR FIREBASE ---
+        const app = initializeApp(firebaseConfig);
+        const analytics = getAnalytics(app);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
         // --- TRADUCCIONES ---
         const translations = {
             es: {
@@ -101,7 +217,28 @@
                 feedbackFill: "Por favor, completa ambos campos.",
                 feedbackCorrect: "¡Correcto!",
                 feedbackIncorrect: "Incorrecto.",
-                feedbackAnswer: "La respuesta es:"
+                feedbackAnswer: "La respuesta es:",
+                streak: "Racha:",
+                leaderboardBtn: "Ver Clasificación",
+                leaderboardTitle: "Clasificación",
+                leaderboardRank: "#",
+                leaderboardUser: "Usuario",
+                leaderboardScore: "Puntuación Max.",
+                leaderboardStreak: "Racha Max.",
+                closeBtn: "Cerrar",
+                loginTitle: "Iniciar Sesión",
+                loginBtn: "Iniciar Sesión",
+                registerPrompt: "¿No tienes cuenta?",
+                registerLink: "Regístrate",
+                registerTitle: "Registrarse",
+                registerBtn: "Registrarse",
+                loginPrompt: "¿Ya tienes cuenta?",
+                loginLink: "Inicia Sesión",
+                usernameLabel: "Nombre de Usuario",
+                usernamePlaceholder: "Elige un nombre público...",
+                emailPlaceholder: "correo@ejemplo.com",
+                passwordPlaceholder: "Contraseña (mín. 6)",
+                logoutBtn: "Cerrar Sesión"
             },
             en: {
                 title: "Irregular Verbs Quiz",
@@ -114,12 +251,34 @@
                 feedbackFill: "Please fill in both fields.",
                 feedbackCorrect: "Correct!",
                 feedbackIncorrect: "Incorrect.",
-                feedbackAnswer: "The answer is:"
+                feedbackAnswer: "The answer is:",
+                streak: "Streak:",
+                leaderboardBtn: "View Leaderboard",
+                leaderboardTitle: "Leaderboard",
+                leaderboardRank: "#",
+                leaderboardUser: "User",
+                leaderboardScore: "High Score",
+                leaderboardStreak: "Max Streak",
+                closeBtn: "Close",
+                loginTitle: "Login",
+                loginBtn: "Login",
+                registerPrompt: "No account?",
+                registerLink: "Register",
+                registerTitle: "Register",
+                registerBtn: "Register",
+                loginPrompt: "Have an account?",
+                loginLink: "Login",
+                usernameLabel: "Username",
+                usernamePlaceholder: "Choose a public name...",
+                emailPlaceholder: "email@example.com",
+                passwordPlaceholder: "Password (min. 6)",
+                logoutBtn: "Log out"
             }
         };
 
         // --- BASE DE DATOS DE VERBOS ---
         const verbs = [
+            // (Tu lista completa de verbos va aquí... omitida por brevedad)
             { infinitive: 'be', simple: 'was/were', participle: 'been' },
             { infinitive: 'bear', simple: 'bore', participle: 'born/borne' },
             { infinitive: 'beat', simple: 'beat', participle: 'beaten' },
@@ -235,6 +394,7 @@
         ];
 
         // --- ELEMENTOS DEL DOM ---
+        const quizContainer = document.getElementById('quiz-container');
         const verbInfinitiveEl = document.getElementById('verb-infinitive');
         const simpleInput = document.getElementById('simple-input');
         const participleInput = document.getElementById('participle-input');
@@ -242,44 +402,358 @@
         const checkBtn = document.getElementById('check-btn');
         const nextBtn = document.getElementById('next-btn');
         const scoreEl = document.getElementById('score');
+        const streakEl = document.getElementById('streak');
         const langSelect = document.getElementById('lang-select');
+        
+        // --- Elementos de Auth ---
+        const authModal = document.getElementById('auth-modal');
+        const authStatusContainer = document.getElementById('auth-status-container');
+        const userEmailEl = document.getElementById('user-email');
+        const logoutBtn = document.getElementById('logout-btn');
+        const authTitle = document.getElementById('auth-title');
+        const authEmailInput = document.getElementById('auth-email');
+        const authPasswordInput = document.getElementById('auth-password');
+        const authUsernameInput = document.getElementById('auth-username');
+        const authUsernameContainer = document.getElementById('auth-username-container');
+        const authSubmitBtn = document.getElementById('auth-submit-btn');
+        const authToggleBtn = document.getElementById('auth-toggle-btn');
+        const authToggleText = document.getElementById('auth-toggle-text');
+        const authErrorEl = document.getElementById('auth-error');
+
+        // --- Elementos de Clasificación ---
+        const leaderboardModal = document.getElementById('leaderboard-modal');
+        const leaderboardToggleBtn = document.getElementById('leaderboard-toggle-btn');
+        const leaderboardCloseBtn = document.getElementById('leaderboard-close-btn');
+        const leaderboardBody = document.getElementById('leaderboard-body');
 
         // --- ESTADO DEL JUEGO ---
         let currentVerb = null;
         let score = 0;
+        let currentStreak = 0;
         let usedIndices = new Set();
-        let currentLang = 'es'; // Valor por defecto
+        let currentLang = 'es';
+        let currentUser = null; // Objeto de usuario de Firebase
+        let currentUserData = null; // Datos de Firestore (username, highScore, maxStreak)
+        let isRegisterMode = false;
+        let leaderboardListener = null; // Para detener el listener de onSnapshot
 
         // --- LÓGICA DE TRADUCCIÓN ---
-        /**
-         * Actualiza el texto de la UI según el idioma seleccionado.
-         */
         function updateUI(lang) {
             if (!translations[lang]) return;
-            
-            currentLang = lang; // Actualizar el estado global del idioma
+            currentLang = lang;
             const strings = translations[lang];
-            
             document.querySelectorAll('[data-key]').forEach(el => {
                 const key = el.dataset.key;
                 if (strings[key]) {
-                    el.innerHTML = strings[key]; // Usar innerHTML para permitir <strong>
+                    el.innerHTML = strings[key];
                 }
+            });
+            // Actualizar placeholders de inputs
+            authEmailInput.placeholder = strings.emailPlaceholder;
+            authPasswordInput.placeholder = strings.passwordPlaceholder;
+            authUsernameInput.placeholder = strings.usernamePlaceholder;
+            
+            // Actualizar botones de auth modal
+            toggleAuthMode(isRegisterMode);
+        }
+
+        // --- LÓGICA DE AUTENTICACIÓN ---
+
+        /**
+         * Observador del estado de autenticación de Firebase.
+         */
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                // Usuario está logueado
+                currentUser = user;
+                await loadUserData(user.uid);
+                authModal.style.display = 'none';
+                quizContainer.style.display = 'block';
+                authStatusContainer.style.display = 'flex';
+                userEmailEl.textContent = currentUserData?.username || user.email; // Mostrar username si existe
+                
+                // Si es la primera vez (no tiene username), pedirlo
+                if (!currentUserData?.username) {
+                    promptForUsername();
+                }
+
+                loadNextVerb();
+                listenForLeaderboardChanges(); // Iniciar listener de clasificación
+            } else {
+                // Usuario no está logueado
+                currentUser = null;
+                currentUserData = null;
+                authModal.style.display = 'flex';
+                quizContainer.style.display = 'none';
+                authStatusContainer.style.display = 'none';
+                
+                // Detener listener de clasificación si existe
+                if (leaderboardListener) {
+                    leaderboardListener(); // Llama a la función 'unsubscribe'
+                    leaderboardListener = null;
+                }
+            }
+        });
+
+        /**
+         * Muestra el modal de auth en modo Registro o Login.
+         */
+        function toggleAuthMode(isRegister) {
+            isRegisterMode = isRegister;
+            const strings = translations[currentLang];
+            authErrorEl.textContent = ''; // Limpiar errores
+
+            if (isRegister) {
+                authTitle.textContent = strings.registerTitle;
+                authSubmitBtn.textContent = strings.registerBtn;
+                authToggleText.textContent = strings.loginPrompt;
+                authToggleBtn.textContent = strings.loginLink;
+                authUsernameContainer.style.display = 'block'; // Mostrar campo de username
+            } else {
+                authTitle.textContent = strings.loginTitle;
+                authSubmitBtn.textContent = strings.loginBtn;
+                authToggleText.textContent = strings.registerPrompt;
+                authToggleBtn.textContent = strings.registerLink;
+                authUsernameContainer.style.display = 'none'; // Ocultar campo de username
+            }
+        }
+
+        /**
+         * Maneja el clic en el botón de submit (Login/Register).
+         */
+        async function handleAuthSubmit() {
+            const email = authEmailInput.value;
+            const password = authPasswordInput.value;
+            const username = authUsernameInput.value.trim();
+            authErrorEl.textContent = ''; // Limpiar errores
+
+            try {
+                if (isRegisterMode) {
+                    // --- MODO REGISTRO ---
+                    if (!username) {
+                        authErrorEl.textContent = 'Por favor ingresa un nombre de usuario.';
+                        return;
+                    }
+                    if (password.length < 6) {
+                        authErrorEl.textContent = 'La contraseña debe tener al menos 6 caracteres.';
+                        return;
+                    }
+                    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                    // Guardar datos iniciales en Firestore (incluyendo username)
+                    const userData = {
+                        username: username,
+                        highScore: 0,
+                        maxStreak: 0,
+                        email: userCredential.user.email // Guardar email para referencia
+                    };
+                    // Usar user.uid como ID del documento
+                    const userDocRef = doc(db, 'leaderboard', userCredential.user.uid);
+                    await setDoc(userDocRef, userData);
+                    currentUserData = userData; // Asignar datos al estado local
+                    
+                } else {
+                    // --- MODO LOGIN ---
+                    await signInWithEmailAndPassword(auth, email, password);
+                    // onAuthStateChanged se encargará del resto
+                }
+            } catch (error) {
+                console.error("Error de autenticación:", error);
+                authErrorEl.textContent = getFirebaseAuthErrorMessage(error.code);
+            }
+        }
+
+        /**
+         * Cierra la sesión del usuario.
+         */
+        function handleLogout() {
+            signOut(auth).catch(error => console.error("Error al cerrar sesión:", error));
+        }
+
+        /**
+         * Traduce códigos de error de Firebase.
+         */
+        function getFirebaseAuthErrorMessage(code) {
+            switch (code) {
+                case 'auth/invalid-email':
+                    return 'El correo no es válido.';
+                case 'auth/user-not-found':
+                    return 'No se encontró usuario con ese correo.';
+                case 'auth/wrong-password':
+                    return 'Contraseña incorrecta.';
+                case 'auth/email-already-in-use':
+                    return 'Ese correo ya está registrado.';
+                case 'auth/weak-password':
+                    return 'La contraseña es muy débil (mín. 6 caracteres).';
+                default:
+                    return 'Ocurrió un error. Intenta de nuevo.';
+            }
+        }
+        
+        /**
+         * Si el usuario se registró pero no puso username (ej. login social futuro)
+         * O si queremos que lo cambien. Por ahora, solo se usa si el username no existe.
+         */
+        function promptForUsername() {
+            // Re-usamos el modal de auth para pedir el username
+            authTitle.textContent = "Elige un nombre de usuario";
+            authSubmitBtn.textContent = "Guardar";
+            authEmailInput.style.display = 'none';
+            authPasswordInput.style.display = 'none';
+            authToggleBtn.style.display = 'none';
+            authToggleText.style.display = 'none';
+            authUsernameContainer.style.display = 'block';
+            authModal.style.display = 'flex';
+
+            const onSaveUsername = async () => {
+                const newUsername = authUsernameInput.value.trim();
+                if (newUsername) {
+                    const userDocRef = doc(db, 'leaderboard', currentUser.uid);
+                    await setDoc(userDocRef, { username: newUsername }, { merge: true });
+                    currentUserData.username = newUsername; // Actualizar local
+                    userEmailEl.textContent = newUsername; // Actualizar UI
+                    
+                    // Restaurar y ocultar modal
+                    authModal.style.display = 'none';
+                    authEmailInput.style.display = 'block';
+                    authPasswordInput.style.display = 'block';
+                    authToggleBtn.style.display = 'block';
+                    authToggleText.style.display = 'block';
+                    authSubmitBtn.removeEventListener('click', onSaveUsername);
+                    authSubmitBtn.addEventListener('click', handleAuthSubmit);
+                    toggleAuthMode(false); // Volver a modo login por defecto
+                }
+            }
+            
+            // Re-asignar el botón de submit temporalmente
+            authSubmitBtn.removeEventListener('click', handleAuthSubmit);
+            authSubmitBtn.addEventListener('click', onSaveUsername);
+        }
+
+
+        // --- LÓGICA DE FIRESTORE (Base de Datos) ---
+
+        /**
+         * Carga los datos (highScore, maxStreak) del usuario desde Firestore.
+         */
+        async function loadUserData(uid) {
+            const userDocRef = doc(db, 'leaderboard', uid);
+            const docSnap = await getDoc(userDocRef);
+            if (docSnap.exists()) {
+                currentUserData = docSnap.data();
+                // Asegurarse de que los campos existen
+                if (!currentUserData.highScore) currentUserData.highScore = 0;
+                if (!currentUserData.maxStreak) currentUserData.maxStreak = 0;
+            } else {
+                // Esto podría pasar si el registro falló en crear el doc,
+                // pero el usuario de Auth sí se creó.
+                console.log("No se encontraron datos de usuario, se crearán.");
+                currentUserData = { username: null, highScore: 0, maxStreak: 0, email: currentUser.email };
+                await setDoc(userDocRef, currentUserData);
+                // Se le pedirá username en el onAuthStateChanged
+            }
+        }
+
+        /**
+         * Guarda la puntuación y racha máxima del usuario en Firestore.
+         */
+        async function saveUserScore() {
+            if (!currentUser || !currentUserData) return; // No guardar si no hay usuario
+
+            let updatedData = {};
+            let needsUpdate = false;
+
+            if (score > (currentUserData.highScore || 0)) {
+                currentUserData.highScore = score;
+                updatedData.highScore = score;
+                needsUpdate = true;
+            }
+            if (currentStreak > (currentUserData.maxStreak || 0)) {
+                currentUserData.maxStreak = currentStreak;
+                updatedData.maxStreak = currentStreak;
+                needsUpdate = true;
+            }
+
+            if (needsUpdate) {
+                try {
+                    const userDocRef = doc(db, 'leaderboard', currentUser.uid);
+                    // Usamos merge: true para solo actualizar estos campos
+                    await setDoc(userDocRef, updatedData, { merge: true });
+                    console.log("Puntuación actualizada en Firestore");
+                } catch (error) {
+                    console.error("Error al guardar puntuación:", error);
+                }
+            }
+        }
+
+        /**
+         * Muestra y puebla el modal de la tabla de clasificación desde Firestore.
+         * Se actualiza en tiempo real.
+         */
+        function listenForLeaderboardChanges() {
+            const q = query(collection(db, 'leaderboard'));
+            
+            // Detener el listener anterior si existe
+            if (leaderboardListener) {
+                leaderboardListener();
+            }
+
+            leaderboardListener = onSnapshot(q, (querySnapshot) => {
+                let leaderboard = [];
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    // Asegurarnos de que el usuario tiene un username para mostrar
+                    if (data.username) {
+                        leaderboard.push({
+                            uid: doc.id,
+                            username: data.username,
+                            highScore: data.highScore || 0,
+                            maxStreak: data.maxStreak || 0
+                        });
+                    }
+                });
+
+                // Ordenar de mayor a menor highScore, luego por maxStreak
+                leaderboard.sort((a, b) => {
+                    if (b.highScore !== a.highScore) {
+                        return b.highScore - a.highScore;
+                    }
+                    return b.maxStreak - a.maxStreak;
+                });
+
+                // Poblar la tabla
+                leaderboardBody.innerHTML = ''; // Limpiar tabla
+                if (leaderboard.length === 0) {
+                    leaderboardBody.innerHTML = `<tr><td colspan="4" class="text-center p-4 text-gray-500">No hay puntuaciones aún.</td></tr>`;
+                    return;
+                }
+
+                leaderboard.forEach((user, index) => {
+                    const row = document.createElement('tr');
+                    row.classList.add('border-t');
+                    
+                    // Aplicar estilo si es el usuario actual
+                    if(currentUser && user.uid === currentUser.uid) {
+                        row.classList.add('bg-indigo-50', 'font-bold');
+                    }
+
+                    row.innerHTML = `
+                        <td class="p-2">${index + 1}</td>
+                        <td class="p-2">${user.username}</td>
+                        <td class="p-2 text-right">${user.highScore}</td>
+                        <td class="p-2 text-right">${user.maxStreak}</td>
+                    `;
+                    leaderboardBody.appendChild(row);
+                });
             });
         }
 
-        // --- LÓGICA DEL JUEGO ---
 
-        /**
-         * Carga el siguiente verbo aleatorio en la UI.
-         */
+        // --- LÓGICA DEL JUEGO (Casi igual que antes) ---
+
         function loadNextVerb() {
-            // Limpiar campos y retroalimentación
             simpleInput.value = '';
             participleInput.value = '';
             feedbackEl.innerHTML = '';
-            
-            // Habilitar inputs y mostrar botón "Comprobar"
             simpleInput.disabled = false;
             participleInput.disabled = false;
             simpleInput.classList.remove('border-red-500', 'border-green-500');
@@ -287,12 +761,10 @@
             checkBtn.style.display = 'block';
             nextBtn.style.display = 'none';
 
-            // Reiniciar el set si ya se usaron todos los verbos
             if (usedIndices.size === verbs.length) {
                 usedIndices.clear();
             }
 
-            // Encontrar un índice aleatorio que no se haya usado
             let randomIndex;
             do {
                 randomIndex = Math.floor(Math.random() * verbs.length);
@@ -300,41 +772,27 @@
             
             usedIndices.add(randomIndex);
             currentVerb = verbs[randomIndex];
-
-            // Mostrar el nuevo verbo
             verbInfinitiveEl.textContent = currentVerb.infinitive;
-            
-            // Poner el foco en el primer campo
             simpleInput.focus();
         }
 
-        /**
-         * Comprueba la respuesta del usuario.
-         */
         function checkAnswer() {
             const userSimple = simpleInput.value.trim().toLowerCase();
             const userParticiple = participleInput.value.trim().toLowerCase();
-
-            const strings = translations[currentLang]; // Obtener strings del idioma actual
+            const strings = translations[currentLang];
 
             if (!userSimple || !userParticiple) {
                 feedbackEl.innerHTML = `<span class="text-yellow-600 font-bold">${strings.feedbackFill}</span>`;
                 return;
             }
 
-            // Obtener respuestas correctas (pueden ser múltiples, ej: "was/were")
             const correctSimpleOptions = currentVerb.simple.split('/');
             const correctParticipleOptions = currentVerb.participle.split('/');
-
-            // Validar
             const isSimpleCorrect = correctSimpleOptions.includes(userSimple);
             const isParticipleCorrect = correctParticipleOptions.includes(userParticiple);
 
-            // Deshabilitar inputs
             simpleInput.disabled = true;
             participleInput.disabled = true;
-
-            // Mostrar botón "Siguiente"
             checkBtn.style.display = 'none';
             nextBtn.style.display = 'block';
 
@@ -343,10 +801,18 @@
                 feedbackEl.innerHTML = `<span class="text-green-600 font-bold">${strings.feedbackCorrect}</span>`;
                 score++;
                 scoreEl.textContent = score;
+                currentStreak++;
+                streakEl.textContent = currentStreak;
                 simpleInput.classList.add('border-green-500');
                 participleInput.classList.add('border-green-500');
+
+                // Comprobar y guardar puntuación máxima (en Firestore)
+                saveUserScore(); // Esta función ahora revisa score y racha
+
             } else {
                 // RESPUESTA INCORRECTA
+                currentStreak = 0; // Reiniciar racha de sesión
+                streakEl.textContent = currentStreak;
                 feedbackEl.innerHTML = `
                     <span class="text-red-600 font-bold">${strings.feedbackIncorrect}</span>
                     <br>
@@ -354,7 +820,6 @@
                         <strong>${currentVerb.simple}</strong> / <strong>${currentVerb.participle}</strong>
                     </span>
                 `;
-                // Marcar en rojo los incorrectos y en verde los correctos
                 simpleInput.classList.add(isSimpleCorrect ? 'border-green-500' : 'border-red-500');
                 participleInput.classList.add(isParticipleCorrect ? 'border-green-500' : 'border-red-500');
             }
@@ -362,37 +827,56 @@
 
         // --- EVENT LISTENERS ---
 
-        // Cargar el primer verbo e inicializar idioma cuando la página esté lista
         document.addEventListener('DOMContentLoaded', () => {
             const savedLang = localStorage.getItem('quizLang') || 'es';
             langSelect.value = savedLang;
             updateUI(savedLang);
-            loadNextVerb();
+            // onAuthStateChanged se encarga de mostrar el modal o el quiz
         });
 
-        // Listener para el selector de idioma
         langSelect.addEventListener('change', (e) => {
             const newLang = e.target.value;
             localStorage.setItem('quizLang', newLang);
             updateUI(newLang);
         });
 
-        // Asignar funciones a los botones
+        // --- Listeners de Auth ---
+        authToggleBtn.addEventListener('click', () => {
+            toggleAuthMode(!isRegisterMode);
+        });
+        authSubmitBtn.addEventListener('click', handleAuthSubmit);
+        logoutBtn.addEventListener('click', handleLogout);
+
+        // --- Listeners del Juego ---
         checkBtn.addEventListener('click', checkAnswer);
         nextBtn.addEventListener('click', loadNextVerb);
 
-        // Permitir presionar "Enter" para comprobar
-        participleInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                checkBtn.click();
-            }
+        // --- Listeners de Clasificación ---
+        leaderboardToggleBtn.addEventListener('click', () => {
+            // El listener de onSnapshot ya está actualizando los datos.
+            // Solo necesitamos mostrar el modal.
+            leaderboardModal.classList.remove('hidden');
+        });
+        leaderboardCloseBtn.addEventListener('click', () => {
+            leaderboardModal.classList.add('hidden');
+        });
+
+        // --- Listeners de Teclado (Enter) ---
+        authPasswordInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') authSubmitBtn.click();
+        });
+        authEmailInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') authSubmitBtn.click();
+        });
+        authUsernameInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') authSubmitBtn.click();
         });
         
+        participleInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !participleInput.disabled) checkBtn.click();
+        });
         simpleInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                // Mover el foco al siguiente campo si se presiona Enter en el primero
-                participleInput.focus();
-            }
+            if (e.key === 'Enter') participleInput.focus();
         });
 
     </script>
