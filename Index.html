@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz de Verbos Irregulares</title>
+    <!-- Carga de Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Carga de la fuente Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Aplicar la fuente Inter a todo el cuerpo */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+
+    <!-- Tarjeta principal del Quiz -->
+    <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-lg">
+        
+        <h1 class="text-3xl font-bold text-center text-indigo-600 mb-4">
+            Quiz de Verbos Irregulares
+        </h1>
+        
+        <p class="text-gray-600 text-center mb-6">
+            Escribe el <strong>Pasado Simple</strong> y el <strong>Pasado Participio</strong> del siguiente verbo.
+        </p>
+
+        <!-- Puntuación -->
+        <div class="text-lg font-semibold text-gray-700 mb-6 text-center">
+            Puntuación: <span id="score" class="text-indigo-600">0</span>
+        </div>
+
+        <!-- Área del verbo -->
+        <div class="bg-indigo-50 p-6 rounded-lg mb-6">
+            <h2 class="text-3xl font-semibold text-gray-900 text-center" id="verb-infinitive">
+                ...
+            </h2>
+        </div>
+
+        <!-- Formulario de respuestas -->
+        <div class="space-y-4">
+            <div>
+                <label for="simple-input" class="block text-sm font-medium text-gray-700 mb-2">
+                    Pasado Simple (Ej: spoke)
+                </label>
+                <input type="text" id="simple-input" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" autocomplete="off" spellcheck="false">
+            </div>
+            
+            <div>
+                <label for="participle-input" class="block text-sm font-medium text-gray-700 mb-2">
+                    Pasado Participio (Ej: spoken)
+                </label>
+                <input type="text" id="participle-input" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" autocomplete="off" spellcheck="false">
+            </div>
+        </div>
+
+        <!-- Área de retroalimentación -->
+        <div id="feedback" class="mt-6 text-center text-lg h-16">
+            <!-- Los mensajes de "Correcto" o "Incorrecto" aparecerán aquí -->
+        </div>
+
+        <!-- Botones de acción -->
+        <div class="mt-6">
+            <button id="check-btn" class="w-full bg-indigo-600 text-white p-3 rounded-lg font-semibold hover:bg-indigo-700 transition-colors shadow-md">
+                Comprobar
+            </button>
+            <button id="next-btn" class="w-full bg-gray-600 text-white p-3 rounded-lg font-semibold hover:bg-gray-700 transition-colors shadow-md hidden">
+                Siguiente Verbo
+            </button>
+        </div>
+
+    </div>
+
+    <script>
+        // --- BASE DE DATOS DE VERBOS ---
+        const verbs = [
+            { infinitive: 'be', simple: 'was/were', participle: 'been' },
+            { infinitive: 'bear', simple: 'bore', participle: 'born/borne' },
+            { infinitive: 'beat', simple: 'beat', participle: 'beaten' },
+            { infinitive: 'become', simple: 'became', participle: 'become' },
+            { infinitive: 'begin', simple: 'began', participle: 'begun' },
+            { infinitive: 'bite', simple: 'bit', participle: 'bitten' },
+            { infinitive: 'blow', simple: 'blew', participle: 'blown' },
+            { infinitive: 'break', simple: 'broke', participle: 'broken' },
+            { infinitive: 'bring', simple: 'brought', participle: 'brought' },
+            { infinitive: 'build', simple: 'built', participle: 'built' },
+            { infinitive: 'burn', simple: 'burnt/burned', participle: 'burnt/burned' },
+            { infinitive: 'burst', simple: 'burst', participle: 'burst' },
+            { infinitive: 'buy', simple: 'bought', participle: 'bought' },
+            { infinitive: 'can', simple: 'could', participle: 'been able to' },
+            { infinitive: 'catch', simple: 'caught', participle: 'caught' },
+            { infinitive: 'choose', simple: 'chose', participle: 'chosen' },
+            { infinitive: 'come', simple: 'came', participle: 'come' },
+            { infinitive: 'cost', simple: 'cost', participle: 'cost' },
+            { infinitive: 'cut', simple: 'cut', participle: 'cut' },
+            { infinitive: 'deal', simple: 'dealt', participle: 'dealt' },
+            { infinitive: 'dig', simple: 'dug', participle: 'dug' },
+            { infinitive: 'do', simple: 'did', participle: 'done' },
+            { infinitive: 'draw', simple: 'drew', participle: 'drawn' },
+            { infinitive: 'dream', simple: 'dreamt/dreamed', participle: 'dreamt/dreamed' },
+            { infinitive: 'drink', simple: 'drank', participle: 'drunk' },
+            { infinitive: 'drive', simple: 'drove', participle: 'driven' },
+            { infinitive: 'eat', simple: 'ate', participle: 'eaten' },
+            { infinitive: 'fall', simple: 'fell', participle: 'fallen' },
+            { infinitive: 'feed', simple: 'fed', participle: 'fed' },
+            { infinitive: 'feel', simple: 'felt', participle: 'felt' },
+            { infinitive: 'fight', simple: 'fought', participle: 'fought' },
+            { infinitive: 'find', simple: 'found', participle: 'found' },
+            { infinitive: 'fly', simple: 'flew', participle: 'flown' },
+            { infinitive: 'forbid', simple: 'forbade', participle: 'forbidden' },
+            { infinitive: 'forget', simple: 'forgot', participle: 'forgotten' },
+            { infinitive: 'forgive', simple: 'forgave', participle: 'forgiven' },
+            { infinitive: 'freeze', simple: 'froze', participle: 'frozen' },
+            { infinitive: 'get', simple: 'got', participle: 'got/gotten' },
+            { infinitive: 'give', simple: 'gave', participle: 'given' },
+            { infinitive: 'go', simple: 'went', participle: 'gone' },
+            { infinitive: 'grow', simple: 'grew', participle: 'grown' },
+            { infinitive: 'hang', simple: 'hung/hanged', participle: 'hung/hanged' },
+            { infinitive: 'have', simple: 'had', participle: 'had' },
+            { infinitive: 'hear', simple: 'heard', participle: 'heard' },
+            { infinitive: 'hide', simple: 'hid', participle: 'hidden' },
+            { infinitive: 'hit', simple: 'hit', participle: 'hit' },
+            { infinitive: 'hold', simple: 'held', participle: 'held' },
+            { infinitive: 'hurt', simple: 'hurt', participle: 'hurt' },
+            { infinitive: 'keep', simple: 'kept', participle: 'kept' },
+            { infinitive: 'know', simple: 'knew', participle: 'known' },
+            { infinitive: 'lay', simple: 'laid', participle: 'laid' },
+            { infinitive: 'lead', simple: 'led', participle: 'led' },
+            { infinitive: 'learn', simple: 'learnt/learned', participle: 'learnt/learned' },
+            { infinitive: 'leave', simple: 'left', participle: 'left' },
+            { infinitive: 'lend', simple: 'lent', participle: 'lent' },
+            { infinitive: 'let', simple: 'let', participle: 'let' },
+            { infinitive: 'lie', simple: 'lay', participle: 'lain' },
+            { infinitive: 'light', simple: 'lit', participle: 'lit' },
+            { infinitive: 'lose', simple: 'lost', participle: 'lost' },
+            { infinitive: 'make', simple: 'made', participle: 'made' },
+            { infinitive: 'mean', simple: 'meant', participle: 'meant' },
+            { infinitive: 'meet', simple: 'met', participle: 'met' },
+            { infinitive: 'pay', simple: 'paid', participle: 'paid' },
+            { infinitive: 'put', simple: 'put', participle: 'put' },
+            { infinitive: 'read', simple: 'read', participle: 'read' },
+            { infinitive: 'ride', simple: 'rode', participle: 'ridden' },
+            { infinitive: 'ring', simple: 'rang', participle: 'rung' },
+            { infinitive: 'rise', simple: 'rose', participle: 'risen' },
+            { infinitive: 'run', simple: 'ran', participle: 'run' },
+            { infinitive: 'say', simple: 'said', participle: 'said' },
+            { infinitive: 'see', simple: 'saw', participle: 'seen' },
+            { infinitive: 'seek', simple: 'sought', participle: 'sought' },
+            { infinitive: 'sell', simple: 'sold', participle: 'sold' },
+            { infinitive: 'send', simple: 'sent', participle: 'sent' },
+            { infinitive: 'set', simple: 'set', participle: 'set' },
+            { infinitive: 'sew', simple: 'sewed', participle: 'sewn' },
+            { infinitive: 'shake', simple: 'shook', participle: 'shaken' },
+            { infinitive: 'shine', simple: 'shone', participle: 'shone' },
+            { infinitive: 'shoot', simple: 'shot', participle: 'shot' },
+            { infinitive: 'show', simple: 'showed', participle: 'shown' },
+            { infinitive: 'shut', simple: 'shut', participle: 'shut' },
+            { infinitive: 'sing', simple: 'sang', participle: 'sung' },
+            { infinitive: 'sit', simple: 'sat', participle: 'sat' },
+            { infinitive: 'sleep', simple: 'slept', participle: 'slept' },
+            { infinitive: 'smell', simple: 'smelt/smelled', participle: 'smelt/smelled' },
+            { infinitive: 'speak', simple: 'spoke', participle: 'spoken' },
+            { infinitive: 'spell', simple: 'spelt/spelled', participle: 'spelt/spelled' },
+            { infinitive: 'spend', simple: 'spent', participle: 'spent' },
+            { infinitive: 'spill', simple: 'spilt', participle: 'spilt' },
+            { infinitive: 'split', simple: 'split', participle: 'split' },
+            { infinitive: 'spoil', simple: 'spoilt/spoiled', participle: 'spoilt/spoiled' },
+            { infinitive: 'spread', simple: 'spread', participle: 'spread' },
+            { infinitive: 'spring', simple: 'sprang', participle: 'sprung' },
+            { infinitive: 'stand', simple: 'stood', participle: 'stood' },
+            { infinitive: 'steal', simple: 'stole', participle: 'stolen' },
+            { infinitive: 'stick', simple: 'stuck', participle: 'stuck' },
+            { infinitive: 'sting', simple: 'stung', participle: 'stung' },
+            { infinitive: 'strike', simple: 'struck', participle: 'struck' },
+            { infinitive: 'swear', simple: 'swore', participle: 'sworn' },
+            { infinitive: 'sweep', simple: 'swept', participle: 'swept' },
+            { infinitive: 'swim', simple: 'swam', participle: 'swum' },
+            { infinitive: 'take', simple: 'took', participle: 'taken' },
+            { infinitive: 'teach', simple: 'taught', participle: 'taught' },
+            { infinitive: 'tear', simple: 'tore', participle: 'torn' },
+            { infinitive: 'tell', simple: 'told', participle: 'told' },
+            { infinitive: 'think', simple: 'thought', participle: 'thought' },
+            { infinitive: 'throw', simple: 'threw', participle: 'thrown' },
+            { infinitive: 'understand', simple: 'understood', participle: 'understood' },
+            { infinitive: 'wake', simple: 'woke', participle: 'woken' },
+            { infinitive: 'wear', simple: 'wore', participle: 'worn' },
+            { infinitive: 'win', simple: 'won', participle: 'won' },
+            { infinitive: 'write', simple: 'wrote', participle: 'written' }
+        ];
+
+        // --- ELEMENTOS DEL DOM ---
+        const verbInfinitiveEl = document.getElementById('verb-infinitive');
+        const simpleInput = document.getElementById('simple-input');
+        const participleInput = document.getElementById('participle-input');
+        const feedbackEl = document.getElementById('feedback');
+        const checkBtn = document.getElementById('check-btn');
+        const nextBtn = document.getElementById('next-btn');
+        const scoreEl = document.getElementById('score');
+
+        // --- ESTADO DEL JUEGO ---
+        let currentVerb = null;
+        let score = 0;
+        let usedIndices = new Set();
+
+        // --- LÓGICA DEL JUEGO ---
+
+        /**
+         * Carga el siguiente verbo aleatorio en la UI.
+         */
+        function loadNextVerb() {
+            // Limpiar campos y retroalimentación
+            simpleInput.value = '';
+            participleInput.value = '';
+            feedbackEl.innerHTML = '';
+            
+            // Habilitar inputs y mostrar botón "Comprobar"
+            simpleInput.disabled = false;
+            participleInput.disabled = false;
+            simpleInput.classList.remove('border-red-500', 'border-green-500');
+            participleInput.classList.remove('border-red-500', 'border-green-500');
+            checkBtn.style.display = 'block';
+            nextBtn.style.display = 'none';
+
+            // Reiniciar el set si ya se usaron todos los verbos
+            if (usedIndices.size === verbs.length) {
+                usedIndices.clear();
+            }
+
+            // Encontrar un índice aleatorio que no se haya usado
+            let randomIndex;
+            do {
+                randomIndex = Math.floor(Math.random() * verbs.length);
+            } while (usedIndices.has(randomIndex));
+            
+            usedIndices.add(randomIndex);
+            currentVerb = verbs[randomIndex];
+
+            // Mostrar el nuevo verbo
+            verbInfinitiveEl.textContent = currentVerb.infinitive;
+            
+            // Poner el foco en el primer campo
+            simpleInput.focus();
+        }
+
+        /**
+         * Comprueba la respuesta del usuario.
+         */
+        function checkAnswer() {
+            const userSimple = simpleInput.value.trim().toLowerCase();
+            const userParticiple = participleInput.value.trim().toLowerCase();
+
+            if (!userSimple || !userParticiple) {
+                feedbackEl.innerHTML = '<span class="text-yellow-600 font-bold">Por favor, completa ambos campos.</span>';
+                return;
+            }
+
+            // Obtener respuestas correctas (pueden ser múltiples, ej: "was/were")
+            const correctSimpleOptions = currentVerb.simple.split('/');
+            const correctParticipleOptions = currentVerb.participle.split('/');
+
+            // Validar
+            const isSimpleCorrect = correctSimpleOptions.includes(userSimple);
+            const isParticipleCorrect = correctParticipleOptions.includes(userParticiple);
+
+            // Deshabilitar inputs
+            simpleInput.disabled = true;
+            participleInput.disabled = true;
+
+            // Mostrar botón "Siguiente"
+            checkBtn.style.display = 'none';
+            nextBtn.style.display = 'block';
+
+            if (isSimpleCorrect && isParticipleCorrect) {
+                // RESPUESTA CORRECTA
+                feedbackEl.innerHTML = '<span class="text-green-600 font-bold">¡Correcto!</span>';
+                score++;
+                scoreEl.textContent = score;
+                simpleInput.classList.add('border-green-500');
+                participleInput.classList.add('border-green-500');
+            } else {
+                // RESPUESTA INCORRECTA
+                feedbackEl.innerHTML = `
+                    <span class="text-red-600 font-bold">Incorrecto.</span>
+                    <br>
+                    <span class="text-sm text-gray-700">La respuesta es: 
+                        <strong>${currentVerb.simple}</strong> / <strong>${currentVerb.participle}</strong>
+                    </span>
+                `;
+                // Marcar en rojo los incorrectos y en verde los correctos
+                simpleInput.classList.add(isSimpleCorrect ? 'border-green-500' : 'border-red-500');
+                participleInput.classList.add(isParticipleCorrect ? 'border-green-500' : 'border-red-500');
+            }
+        }
+
+        // --- EVENT LISTENERS ---
+
+        // Cargar el primer verbo cuando la página esté lista
+        document.addEventListener('DOMContentLoaded', loadNextVerb);
+
+        // Asignar funciones a los botones
+        checkBtn.addEventListener('click', checkAnswer);
+        nextBtn.addEventListener('click', loadNextVerb);
+
+        // Permitir presionar "Enter" para comprobar
+        participleInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                checkBtn.click();
+            }
+        });
+        
+        simpleInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                // Mover el foco al siguiente campo si se presiona Enter en el primero
+                participleInput.focus();
+            }
+        });
+
+    </script>
+</body>
+</html>
