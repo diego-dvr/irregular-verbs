@@ -114,10 +114,17 @@
         Creado por: Diego Vargas Rizo
     </footer>
 
-    <!-- Modal de Autenticación (Login / Registro) -->
+    <!-- Modal de Autenticación (Login / Registro / Invitado) -->
     <div id="auth-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 p-4">
-        <div class="bg-white p-8 rounded-lg shadow-lg w-full max-w-sm">
-            <h2 id="auth-title" class="text-2xl font-bold mb-4" data-key="loginTitle">Iniciar Sesión</h2>
+        <div class="bg-white p-8 rounded-lg shadow-lg w-full max-w-sm max-h-[90vh] overflow-y-auto">
+            
+            <!-- Nuevos Títulos solicitados -->
+            <div class="text-center mb-6 border-b pb-4">
+                <h1 class="text-2xl font-bold text-indigo-700" data-key="appTitle">Quiz de Verbos Irregulares</h1>
+                <p class="text-sm text-gray-500 mt-2" data-key="authSubtitle">Inicia sesión, regístrate o continua como invitado</p>
+            </div>
+
+            <h2 id="auth-title" class="text-xl font-bold mb-4 text-gray-800" data-key="loginTitle">Iniciar Sesión</h2>
             
             <div id="auth-username-container" class="mb-4" style="display: none;">
                 <label for="auth-username" class="block text-sm font-medium text-gray-700 mb-2" data-key="usernameLabel">Nombre de Usuario</label>
@@ -133,10 +140,22 @@
 
             <button id="auth-submit-btn" class="w-full bg-indigo-600 text-white p-3 rounded-lg font-semibold hover:bg-indigo-700 mt-4" data-key="loginBtn">Iniciar Sesión</button>
             
-            <p class="text-sm text-center mt-4">
+            <p class="text-sm text-center mt-4 mb-4">
                 <span id="auth-toggle-text" data-key="registerPrompt">¿No tienes cuenta?</span>
                 <button id="auth-toggle-btn" class="text-indigo-600 hover:underline" data-key="registerLink">Regístrate</button>
             </p>
+
+            <!-- Separador -->
+            <div class="relative flex py-2 items-center">
+                <div class="flex-grow border-t border-gray-300"></div>
+                <span class="flex-shrink mx-4 text-gray-400 text-sm">O</span>
+                <div class="flex-grow border-t border-gray-300"></div>
+            </div>
+
+            <!-- Botón de Invitado -->
+            <button id="guest-btn" class="w-full bg-white border-2 border-gray-300 text-gray-700 p-3 rounded-lg font-semibold hover:bg-gray-50 hover:border-gray-400 mt-2 transition-colors text-sm" data-key="guestBtn">
+                Continuar como invitado (no participarás en la clasificación)
+            </button>
         </div>
     </div>
 
@@ -145,6 +164,12 @@
     <div id="leaderboard-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 p-4 hidden">
         <div class="bg-white p-8 rounded-lg shadow-lg w-full max-w-lg">
             <h2 class="text-2xl font-bold mb-6 text-center" data-key="leaderboardTitle">Clasificación</h2>
+            
+            <!-- Aviso para invitados (oculto por defecto) -->
+            <p id="guest-leaderboard-msg" class="text-center text-amber-600 mb-4 text-sm hidden" data-key="guestMsg">
+                Estás jugando como invitado. Regístrate para guardar tu puntuación.
+            </p>
+
             <div class="max-h-80 overflow-y-auto">
                 <table class="w-full">
                     <thead>
@@ -174,6 +199,7 @@
             onAuthStateChanged,
             createUserWithEmailAndPassword,
             signInWithEmailAndPassword,
+            signInAnonymously, 
             signOut
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { 
@@ -187,7 +213,6 @@
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- TU CONFIGURACIÓN DE FIREBASE (del Paso 3 de tu tarea) ---
-        // CORREGIDO con tu clave correcta
         const firebaseConfig = {
             apiKey: "AIzaSyC6fLL_s5CSd1IfOgbEb_-3rA8BwhR7TJg",
             authDomain: "irregular-verbs-quiz-e0ddd.firebaseapp.com",
@@ -207,6 +232,8 @@
         // --- TRADUCCIONES ---
         const translations = {
             es: {
+                appTitle: "Quiz de Verbos Irregulares",
+                authSubtitle: "Inicia sesión, regístrate o continúa como invitado",
                 title: "Quiz de Verbos Irregulares",
                 subtitle: "Escribe el <strong>Pasado Simple</strong> y el <strong>Pasado Participio</strong> del siguiente verbo.",
                 score: "Puntuación:",
@@ -225,6 +252,7 @@
                 leaderboardUser: "Usuario",
                 leaderboardScore: "Puntuación Max.",
                 leaderboardStreak: "Racha Max.",
+                guestMsg: "Estás jugando como invitado. Regístrate para guardar tu puntuación.",
                 closeBtn: "Cerrar",
                 loginTitle: "Iniciar Sesión",
                 loginBtn: "Iniciar Sesión",
@@ -238,9 +266,12 @@
                 usernamePlaceholder: "Elige un nombre público...",
                 emailPlaceholder: "correo@ejemplo.com",
                 passwordPlaceholder: "Contraseña (mín. 6)",
-                logoutBtn: "Cerrar Sesión"
+                logoutBtn: "Cerrar Sesión",
+                guestBtn: "Continuar como invitado (no participarás en la clasificación)"
             },
             en: {
+                appTitle: "Irregular Verbs Quiz",
+                authSubtitle: "Login, register or continue as a guest",
                 title: "Irregular Verbs Quiz",
                 subtitle: "Write the <strong>Simple Past</strong> and <strong>Past Participle</strong> for the following verb.",
                 score: "Score:",
@@ -259,6 +290,7 @@
                 leaderboardUser: "User",
                 leaderboardScore: "High Score",
                 leaderboardStreak: "Max Streak",
+                guestMsg: "You are playing as a guest. Register to save your score.",
                 closeBtn: "Close",
                 loginTitle: "Login",
                 loginBtn: "Login",
@@ -272,7 +304,8 @@
                 usernamePlaceholder: "Choose a public name...",
                 emailPlaceholder: "email@example.com",
                 passwordPlaceholder: "Password (min. 6)",
-                logoutBtn: "Log out"
+                logoutBtn: "Log out",
+                guestBtn: "Continue as guest (you won't be on the leaderboard)"
             }
         };
 
@@ -419,12 +452,14 @@
         const authToggleBtn = document.getElementById('auth-toggle-btn');
         const authToggleText = document.getElementById('auth-toggle-text');
         const authErrorEl = document.getElementById('auth-error');
+        const guestBtn = document.getElementById('guest-btn');
 
         // --- Elementos de Clasificación ---
         const leaderboardModal = document.getElementById('leaderboard-modal');
         const leaderboardToggleBtn = document.getElementById('leaderboard-toggle-btn');
         const leaderboardCloseBtn = document.getElementById('leaderboard-close-btn');
         const leaderboardBody = document.getElementById('leaderboard-body');
+        const guestLeaderboardMsg = document.getElementById('guest-leaderboard-msg');
 
         // --- ESTADO DEL JUEGO ---
         let currentVerb = null;
@@ -436,6 +471,7 @@
         let currentUserData = null; // Datos de Firestore (username, highScore, maxStreak)
         let isRegisterMode = false;
         let leaderboardListener = null; // Para detener el listener de onSnapshot
+        let isLocalGuest = false; // <-- NUEVO: Bandera para modo invitado offline
 
         // --- LÓGICA DE TRADUCCIÓN ---
         function updateUI(lang) {
@@ -464,32 +500,49 @@
          */
         onAuthStateChanged(auth, async (user) => {
             if (user) {
-                // Usuario está logueado
+                // Usuario real conectado, apagamos el modo invitado local
+                isLocalGuest = false;
+                
                 currentUser = user;
-                await loadUserData(user.uid);
+
+                if (user.isAnonymous) {
+                    // --- USUARIO INVITADO (Firebase) ---
+                    currentUserData = {
+                        username: "Invitado",
+                        highScore: 0,
+                        maxStreak: 0,
+                        isGuest: true 
+                    };
+                    userEmailEl.textContent = (currentLang === 'en' ? "Guest" : "Invitado");
+                } else {
+                    // --- USUARIO REGISTRADO ---
+                    await loadUserData(user.uid);
+                    userEmailEl.textContent = currentUserData?.username || user.email; 
+                    
+                    if (!currentUserData?.username) {
+                        promptForUsername();
+                    }
+                }
+
                 authModal.style.display = 'none';
                 quizContainer.style.display = 'block';
                 authStatusContainer.style.display = 'flex';
-                userEmailEl.textContent = currentUserData?.username || user.email; // Mostrar username si existe
                 
-                // Si es la primera vez (no tiene username), pedirlo
-                if (!currentUserData?.username) {
-                    promptForUsername();
-                }
-
                 loadNextVerb();
-                listenForLeaderboardChanges(); // Iniciar listener de clasificación
+                listenForLeaderboardChanges(); 
             } else {
-                // Usuario no está logueado
+                // Usuario NO logueado en Firebase
+                // Si estamos en "Modo invitado local", NO mostramos el modal de login
+                if (isLocalGuest) return;
+
                 currentUser = null;
                 currentUserData = null;
                 authModal.style.display = 'flex';
                 quizContainer.style.display = 'none';
                 authStatusContainer.style.display = 'none';
                 
-                // Detener listener de clasificación si existe
                 if (leaderboardListener) {
-                    leaderboardListener(); // Llama a la función 'unsubscribe'
+                    leaderboardListener(); 
                     leaderboardListener = null;
                 }
             }
@@ -501,20 +554,20 @@
         function toggleAuthMode(isRegister) {
             isRegisterMode = isRegister;
             const strings = translations[currentLang];
-            authErrorEl.textContent = ''; // Limpiar errores
+            authErrorEl.textContent = ''; 
 
             if (isRegister) {
                 authTitle.textContent = strings.registerTitle;
                 authSubmitBtn.textContent = strings.registerBtn;
                 authToggleText.textContent = strings.loginPrompt;
                 authToggleBtn.textContent = strings.loginLink;
-                authUsernameContainer.style.display = 'block'; // Mostrar campo de username
+                authUsernameContainer.style.display = 'block'; 
             } else {
                 authTitle.textContent = strings.loginTitle;
                 authSubmitBtn.textContent = strings.loginBtn;
                 authToggleText.textContent = strings.registerPrompt;
                 authToggleBtn.textContent = strings.registerLink;
-                authUsernameContainer.style.display = 'none'; // Ocultar campo de username
+                authUsernameContainer.style.display = 'none'; 
             }
         }
 
@@ -525,7 +578,7 @@
             const email = authEmailInput.value;
             const password = authPasswordInput.value;
             const username = authUsernameInput.value.trim();
-            authErrorEl.textContent = ''; // Limpiar errores
+            authErrorEl.textContent = ''; 
 
             try {
                 if (isRegisterMode) {
@@ -539,22 +592,19 @@
                         return;
                     }
                     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-                    // Guardar datos iniciales en Firestore (incluyendo username)
                     const userData = {
                         username: username,
                         highScore: 0,
                         maxStreak: 0,
-                        email: userCredential.user.email // Guardar email para referencia
+                        email: userCredential.user.email 
                     };
-                    // Usar user.uid como ID del documento
                     const userDocRef = doc(db, 'leaderboard', userCredential.user.uid);
                     await setDoc(userDocRef, userData);
-                    currentUserData = userData; // Asignar datos al estado local
+                    currentUserData = userData; 
                     
                 } else {
                     // --- MODO LOGIN ---
                     await signInWithEmailAndPassword(auth, email, password);
-                    // onAuthStateChanged se encargará del resto
                 }
             } catch (error) {
                 console.error("Error de autenticación:", error);
@@ -563,10 +613,63 @@
         }
 
         /**
+         * Maneja el inicio de sesión como INVITADO
+         * Intenta Firebase Anon. Si falla, usa modo Local.
+         */
+        async function handleGuestLogin() {
+            try {
+                await signInAnonymously(auth);
+            } catch (error) {
+                console.warn("Firebase Anonymous Auth falló (probablemente deshabilitado). Usando modo local.", error);
+                // --- FALLBACK: MODO INVITADO LOCAL ---
+                isLocalGuest = true;
+                
+                // Simular objeto de usuario
+                currentUser = { uid: 'local-guest', isAnonymous: true };
+                currentUserData = {
+                    username: (currentLang === 'en' ? "Guest" : "Invitado"),
+                    highScore: 0,
+                    maxStreak: 0,
+                    isGuest: true
+                };
+
+                // Actualizar UI manualmente
+                userEmailEl.textContent = currentUserData.username;
+                authModal.style.display = 'none';
+                quizContainer.style.display = 'block';
+                authStatusContainer.style.display = 'flex';
+                
+                loadNextVerb();
+                // Intentamos cargar la clasificación (puede fallar si reglas requieren auth)
+                listenForLeaderboardChanges(); 
+            }
+        }
+
+        /**
          * Cierra la sesión del usuario.
          */
         function handleLogout() {
-            signOut(auth).catch(error => console.error("Error al cerrar sesión:", error));
+            score = 0; 
+            currentStreak = 0;
+            scoreEl.textContent = '0';
+            streakEl.textContent = '0';
+            
+            if (isLocalGuest) {
+                // Logout manual local
+                isLocalGuest = false;
+                currentUser = null;
+                currentUserData = null;
+                authModal.style.display = 'flex';
+                quizContainer.style.display = 'none';
+                authStatusContainer.style.display = 'none';
+                if (leaderboardListener) {
+                    leaderboardListener();
+                    leaderboardListener = null;
+                }
+            } else {
+                // Logout normal de Firebase
+                signOut(auth).catch(error => console.error("Error al cerrar sesión:", error));
+            }
         }
 
         /**
@@ -589,18 +692,14 @@
             }
         }
         
-        /**
-         * Si el usuario se registró pero no puso username (ej. login social futuro)
-         * O si queremos que lo cambien. Por ahora, solo se usa si el username no existe.
-         */
         function promptForUsername() {
-            // Re-usamos el modal de auth para pedir el username
             authTitle.textContent = "Elige un nombre de usuario";
             authSubmitBtn.textContent = "Guardar";
             authEmailInput.style.display = 'none';
             authPasswordInput.style.display = 'none';
             authToggleBtn.style.display = 'none';
             authToggleText.style.display = 'none';
+            guestBtn.style.display = 'none'; 
             authUsernameContainer.style.display = 'block';
             authModal.style.display = 'flex';
 
@@ -609,22 +708,21 @@
                 if (newUsername) {
                     const userDocRef = doc(db, 'leaderboard', currentUser.uid);
                     await setDoc(userDocRef, { username: newUsername }, { merge: true });
-                    currentUserData.username = newUsername; // Actualizar local
-                    userEmailEl.textContent = newUsername; // Actualizar UI
+                    currentUserData.username = newUsername; 
+                    userEmailEl.textContent = newUsername; 
                     
-                    // Restaurar y ocultar modal
                     authModal.style.display = 'none';
                     authEmailInput.style.display = 'block';
                     authPasswordInput.style.display = 'block';
                     authToggleBtn.style.display = 'block';
                     authToggleText.style.display = 'block';
+                    guestBtn.style.display = 'block'; 
                     authSubmitBtn.removeEventListener('click', onSaveUsername);
                     authSubmitBtn.addEventListener('click', handleAuthSubmit);
-                    toggleAuthMode(false); // Volver a modo login por defecto
+                    toggleAuthMode(false); 
                 }
             }
             
-            // Re-asignar el botón de submit temporalmente
             authSubmitBtn.removeEventListener('click', handleAuthSubmit);
             authSubmitBtn.addEventListener('click', onSaveUsername);
         }
@@ -632,32 +730,23 @@
 
         // --- LÓGICA DE FIRESTORE (Base de Datos) ---
 
-        /**
-         * Carga los datos (highScore, maxStreak) del usuario desde Firestore.
-         */
         async function loadUserData(uid) {
             const userDocRef = doc(db, 'leaderboard', uid);
             const docSnap = await getDoc(userDocRef);
             if (docSnap.exists()) {
                 currentUserData = docSnap.data();
-                // Asegurarse de que los campos existen
                 if (!currentUserData.highScore) currentUserData.highScore = 0;
                 if (!currentUserData.maxStreak) currentUserData.maxStreak = 0;
             } else {
-                // Esto podría pasar si el registro falló en crear el doc,
-                // pero el usuario de Auth sí se creó.
                 console.log("No se encontraron datos de usuario, se crearán.");
                 currentUserData = { username: null, highScore: 0, maxStreak: 0, email: currentUser.email };
                 await setDoc(userDocRef, currentUserData);
-                // Se le pedirá username en el onAuthStateChanged
             }
         }
 
-        /**
-         * Guarda la puntuación y racha máxima del usuario en Firestore.
-         */
         async function saveUserScore() {
-            if (!currentUser || !currentUserData) return; // No guardar si no hay usuario
+            // NO GUARDAR si es invitado (local o firebase) o no hay datos
+            if (!currentUser || !currentUserData || currentUser.isAnonymous || isLocalGuest) return;
 
             let updatedData = {};
             let needsUpdate = false;
@@ -676,7 +765,6 @@
             if (needsUpdate) {
                 try {
                     const userDocRef = doc(db, 'leaderboard', currentUser.uid);
-                    // Usamos merge: true para solo actualizar estos campos
                     await setDoc(userDocRef, updatedData, { merge: true });
                     console.log("Puntuación actualizada en Firestore");
                 } catch (error) {
@@ -685,14 +773,9 @@
             }
         }
 
-        /**
-         * Muestra y puebla el modal de la tabla de clasificación desde Firestore.
-         * Se actualiza en tiempo real.
-         */
         function listenForLeaderboardChanges() {
             const q = query(collection(db, 'leaderboard'));
             
-            // Detener el listener anterior si existe
             if (leaderboardListener) {
                 leaderboardListener();
             }
@@ -701,7 +784,6 @@
                 let leaderboard = [];
                 querySnapshot.forEach((doc) => {
                     const data = doc.data();
-                    // Asegurarnos de que el usuario tiene un username para mostrar
                     if (data.username) {
                         leaderboard.push({
                             uid: doc.id,
@@ -712,7 +794,6 @@
                     }
                 });
 
-                // Ordenar de mayor a menor highScore, luego por maxStreak
                 leaderboard.sort((a, b) => {
                     if (b.highScore !== a.highScore) {
                         return b.highScore - a.highScore;
@@ -720,8 +801,7 @@
                     return b.maxStreak - a.maxStreak;
                 });
 
-                // Poblar la tabla
-                leaderboardBody.innerHTML = ''; // Limpiar tabla
+                leaderboardBody.innerHTML = ''; 
                 if (leaderboard.length === 0) {
                     leaderboardBody.innerHTML = `<tr><td colspan="4" class="text-center p-4 text-gray-500">No hay puntuaciones aún.</td></tr>`;
                     return;
@@ -731,8 +811,7 @@
                     const row = document.createElement('tr');
                     row.classList.add('border-t');
                     
-                    // Aplicar estilo si es el usuario actual
-                    if(currentUser && user.uid === currentUser.uid) {
+                    if(currentUser && user.uid === currentUser.uid && !currentUser.isAnonymous && !isLocalGuest) {
                         row.classList.add('bg-indigo-50', 'font-bold');
                     }
 
@@ -744,11 +823,15 @@
                     `;
                     leaderboardBody.appendChild(row);
                 });
+            }, (error) => {
+                // Error callback para onSnapshot
+                console.log("No se pudo leer la clasificación (probablemente permisos de invitado):", error);
+                leaderboardBody.innerHTML = `<tr><td colspan="4" class="text-center p-4 text-gray-500 text-sm">Debes iniciar sesión para ver la clasificación global.</td></tr>`;
             });
         }
 
 
-        // --- LÓGICA DEL JUEGO (Casi igual que antes) ---
+        // --- LÓGICA DEL JUEGO ---
 
         function loadNextVerb() {
             simpleInput.value = '';
@@ -797,7 +880,6 @@
             nextBtn.style.display = 'block';
 
             if (isSimpleCorrect && isParticipleCorrect) {
-                // RESPUESTA CORRECTA
                 feedbackEl.innerHTML = `<span class="text-green-600 font-bold">${strings.feedbackCorrect}</span>`;
                 score++;
                 scoreEl.textContent = score;
@@ -806,12 +888,10 @@
                 simpleInput.classList.add('border-green-500');
                 participleInput.classList.add('border-green-500');
 
-                // Comprobar y guardar puntuación máxima (en Firestore)
-                saveUserScore(); // Esta función ahora revisa score y racha
+                saveUserScore(); 
 
             } else {
-                // RESPUESTA INCORRECTA
-                currentStreak = 0; // Reiniciar racha de sesión
+                currentStreak = 0; 
                 streakEl.textContent = currentStreak;
                 feedbackEl.innerHTML = `
                     <span class="text-red-600 font-bold">${strings.feedbackIncorrect}</span>
@@ -831,7 +911,6 @@
             const savedLang = localStorage.getItem('quizLang') || 'es';
             langSelect.value = savedLang;
             updateUI(savedLang);
-            // onAuthStateChanged se encarga de mostrar el modal o el quiz
         });
 
         langSelect.addEventListener('change', (e) => {
@@ -840,28 +919,28 @@
             updateUI(newLang);
         });
 
-        // --- Listeners de Auth ---
         authToggleBtn.addEventListener('click', () => {
             toggleAuthMode(!isRegisterMode);
         });
         authSubmitBtn.addEventListener('click', handleAuthSubmit);
+        guestBtn.addEventListener('click', handleGuestLogin); 
         logoutBtn.addEventListener('click', handleLogout);
 
-        // --- Listeners del Juego ---
         checkBtn.addEventListener('click', checkAnswer);
         nextBtn.addEventListener('click', loadNextVerb);
 
-        // --- Listeners de Clasificación ---
         leaderboardToggleBtn.addEventListener('click', () => {
-            // El listener de onSnapshot ya está actualizando los datos.
-            // Solo necesitamos mostrar el modal.
+            if (currentUser && currentUser.isAnonymous) {
+                guestLeaderboardMsg.classList.remove('hidden');
+            } else {
+                guestLeaderboardMsg.classList.add('hidden');
+            }
             leaderboardModal.classList.remove('hidden');
         });
         leaderboardCloseBtn.addEventListener('click', () => {
             leaderboardModal.classList.add('hidden');
         });
 
-        // --- Listeners de Teclado (Enter) ---
         authPasswordInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') authSubmitBtn.click();
         });
